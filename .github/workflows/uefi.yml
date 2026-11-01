@@ -9,20 +9,22 @@ permissions:
 jobs:
   uefi:
     runs-on: macos-26
-    timeout-minutes: 120
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@v4
       - name: Python deps
-        run: python3 -m pip install -r pip-requirements.txt
+        run: |
+          python3 -m pip install --break-system-packages --quiet -r pip-requirements.txt ||           python3 -m pip install --quiet --user -r pip-requirements.txt
+          python3 -c "import edk2toolext, edk2toollib; print('edk2 tools ok')"
       - name: Build
         run: |
-          python3 build_uefi.py -d fuxi -r RELEASE 2>&1 | tail -60
+          python3 build_uefi.py -d fuxi -r RELEASE 2>&1 | tail -80
       - name: Collect
         if: always()
         run: |
           mkdir -p out
-          find Build -name 'SILICIUM_UEFI.fd' -exec cp {} out/ \; 2>/dev/null || true
           find Build -name '*.fd' -exec cp {} out/ \; 2>/dev/null || true
+          find Build -name 'SILICIUM_UEFI.fd' -exec cp {} out/ \; 2>/dev/null || true
           ls -l out || true
       - name: Upload
         if: always()
