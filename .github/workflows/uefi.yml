@@ -14,17 +14,24 @@ jobs:
       - uses: actions/checkout@v4
       - name: Python deps
         run: |
-          python3 -m pip install --break-system-packages --quiet -r pip-requirements.txt ||           python3 -m pip install --quiet --user -r pip-requirements.txt
+          python3 -m pip install --break-system-packages --quiet -r pip-requirements.txt || \
+          python3 -m pip install --quiet --user -r pip-requirements.txt
           python3 -c "import edk2toolext, edk2toollib; print('edk2 tools ok')"
       - name: Build
         run: |
-          python3 build_uefi.py -d fuxi -r RELEASE 2>&1 | tail -80
+          set -o pipefail
+          python3 build_uefi.py -d fuxi -r RELEASE > uefi-build.log 2>&1 || {
+            echo "=== build failed, tail ==="
+            tail -90 uefi-build.log
+            exit 1
+          }
+          tail -25 uefi-build.log
       - name: Collect
         if: always()
         run: |
           mkdir -p out
-          find Build -name '*.fd' -exec cp {} out/ \; 2>/dev/null || true
-          find Build -name 'SILICIUM_UEFI.fd' -exec cp {} out/ \; 2>/dev/null || true
+          find . -name '*.fd' -not -path './.git/*' -exec cp {} out/ \; 2>/dev/null || true
+          cp uefi-build.log out/ 2>/dev/null || true
           ls -l out || true
       - name: Upload
         if: always()
